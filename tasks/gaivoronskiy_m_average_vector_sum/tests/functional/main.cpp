@@ -71,9 +71,10 @@ TEST_P(GaivoronkiyMRunFuncTestsProcesses, MatmulFromPic) {
 
 const std::array<TestType, 3> kTestParam = {std::make_tuple(3, "3"), std::make_tuple(5, "5"), std::make_tuple(7, "7")};
 
-const auto kTestTasksList =
-    std::tuple_cat(ppc::util::AddFuncTask<GaivoronskiyMAverageVecSumMPI, InType>(kTestParam, PPC_SETTINGS_gaivoronskiy_m_average_vector_sum),
-                   ppc::util::AddFuncTask<GaivoronskiyMAverageVecSumSEQ, InType>(kTestParam, PPC_SETTINGS_gaivoronskiy_m_average_vector_sum));
+const auto kTestTasksList = std::tuple_cat(ppc::util::AddFuncTask<GaivoronskiyMAverageVecSumMPI, InType>(
+                                               kTestParam, PPC_SETTINGS_gaivoronskiy_m_average_vector_sum),
+                                           ppc::util::AddFuncTask<GaivoronskiyMAverageVecSumSEQ, InType>(
+                                               kTestParam, PPC_SETTINGS_gaivoronskiy_m_average_vector_sum));
 
 const auto kGtestValues = ppc::util::ExpandToValues(kTestTasksList);
 

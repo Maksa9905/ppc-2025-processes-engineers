@@ -29,7 +29,8 @@ TEST_P(GaivoronskiyRunPerfTestProcesses, RunPerfModes) {
 }
 
 const auto kAllPerfTasks =
-    ppc::util::MakeAllPerfTasks<InType, GaivoronskiyMAverageVecSumMPI, GaivoronskiyMAverageVecSumSEQ>(PPC_SETTINGS_gaivoronskiy_m_average_vector_sum);
+    ppc::util::MakeAllPerfTasks<InType, GaivoronskiyMAverageVecSumMPI, GaivoronskiyMAverageVecSumSEQ>(
+        PPC_SETTINGS_gaivoronskiy_m_average_vector_sum);
 
 const auto kGtestValues = ppc::util::TupleToGTestValues(kAllPerfTasks);
 
