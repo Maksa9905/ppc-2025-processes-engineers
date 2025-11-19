@@ -3,7 +3,9 @@
 #include <array>
 #include <charconv>
 #include <cmath>
+#include <fstream>
 #include <numeric>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -12,22 +14,48 @@
 #include "gaivoronskiy_m_average_vector_sum/mpi/include/ops_mpi.hpp"
 #include "gaivoronskiy_m_average_vector_sum/seq/include/ops_seq.hpp"
 #include "util/include/perf_test_util.hpp"
+#include "util/include/util.hpp"
 
 namespace gaivoronskiy_m_average_vector_sum {
 
 namespace {
 
 constexpr std::array<std::size_t, 4> kPerfSizes = {1'000'000, 5'000'000, 20'000'000, 100'000'000};
+constexpr std::string_view kPerfBaseFile = "perf_vec_base.txt";
 
+std::vector<double> LoadVectorFromFile(const std::string &file_name) {
+  std::string abs_path = ppc::util::GetAbsoluteTaskPath(PPC_ID_gaivoronskiy_m_average_vector_sum, file_name);
+  std::ifstream file(abs_path);
+  if (!file.is_open()) {
+    throw std::runtime_error("Failed to open file: " + abs_path);
+  }
+  std::vector<double> data;
+  double value = 0.0;
+  while (file >> value) {
+    data.push_back(value);
+  }
+  return data;
 }
+
+}  // namespace
 
 class GaivoronskiyRunPerfTestProcesses : public ppc::util::BaseRunPerfTests<InType, OutType> {
  protected:
   void SetUp() override {
     const std::size_t data_size = ResolveInputSizeFromTestParam();
-    input_data_.resize(data_size);
-    for (std::size_t i = 0; i < data_size; ++i) {
-      input_data_[i] = static_cast<double>((i % 101) - 50);
+    const auto base_pattern = LoadVectorFromFile(std::string(kPerfBaseFile));
+    if (base_pattern.empty()) {
+      throw std::runtime_error("Performance base vector file is empty");
+    }
+    input_data_.clear();
+    input_data_.reserve(data_size);
+    while (input_data_.size() < data_size) {
+      const std::size_t remaining = data_size - input_data_.size();
+      if (remaining >= base_pattern.size()) {
+        input_data_.insert(input_data_.end(), base_pattern.begin(), base_pattern.end());
+      } else {
+        input_data_.insert(input_data_.end(), base_pattern.begin(), base_pattern.begin() + remaining);
+      }
     }
     expected_average_ = CalculateAverage(input_data_);
   }

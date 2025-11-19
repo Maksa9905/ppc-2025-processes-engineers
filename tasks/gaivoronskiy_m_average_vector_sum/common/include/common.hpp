@@ -12,8 +12,8 @@ using InType = std::vector<double>;
 using OutType = double;
 
 struct TestCase {
-  std::vector<double> values;
-  std::string name;
+  std::string file_name;
+  double expected_average;
 };
 
 using TestType = TestCase;

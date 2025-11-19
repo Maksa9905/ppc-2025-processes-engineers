@@ -1,8 +1,13 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cctype>
 #include <cmath>
+#include <fstream>
+#include <iomanip>
 #include <numeric>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -11,21 +16,65 @@
 #include "gaivoronskiy_m_average_vector_sum/mpi/include/ops_mpi.hpp"
 #include "gaivoronskiy_m_average_vector_sum/seq/include/ops_seq.hpp"
 #include "util/include/func_test_util.hpp"
+#include "util/include/util.hpp"
 
 namespace gaivoronskiy_m_average_vector_sum {
 
 namespace {
 
-TestType MakeCase(std::vector<double> values, std::string name) {
-  return TestType{std::move(values), std::move(name)};
+std::vector<double> LoadVectorFromFile(const std::string &file_name) {
+  std::string abs_path = ppc::util::GetAbsoluteTaskPath(PPC_ID_gaivoronskiy_m_average_vector_sum, file_name);
+  std::ifstream file(abs_path);
+  if (!file.is_open()) {
+    throw std::runtime_error("Failed to open file: " + abs_path);
+  }
+  std::vector<double> data;
+  double value = 0.0;
+  while (file >> value) {
+    data.push_back(value);
+  }
+  return data;
 }
 
-TestType MakeArithmeticCase(std::size_t size, double start, double step, std::string name) {
-  InType values(size);
-  for (std::size_t i = 0; i < size; ++i) {
-    values[i] = start + step * static_cast<double>(i);
+std::string StripExtension(const std::string &file_name) {
+  const auto pos = file_name.find_last_of('.');
+  if (pos == std::string::npos) {
+    return file_name;
   }
-  return TestType{std::move(values), std::move(name)};
+  return file_name.substr(0, pos);
+}
+
+std::string SanitizeToken(std::string token) {
+  for (char &ch : token) {
+    if (!std::isalnum(static_cast<unsigned char>(ch))) {
+      ch = '_';
+    }
+  }
+  return token;
+}
+
+std::string FormatAverageLabel(double value) {
+  if (std::isnan(value)) {
+    return "nan";
+  }
+  std::ostringstream oss;
+  oss << std::fixed << std::setprecision(6) << value;
+  std::string str = oss.str();
+  if (str.find('.') != std::string::npos) {
+    str = str.substr(0, str.find_last_not_of('0') + 1);
+    if (!str.empty() && str.back() == '.') {
+      str.pop_back();
+    }
+  }
+  if (!str.empty() && str.front() == '-') {
+    str = "minus_" + str.substr(1);
+  }
+  for (char &ch : str) {
+    if (ch == '.') {
+      ch = 'p';
+    }
+  }
+  return str.empty() ? "0" : str;
 }
 
 }  // namespace
@@ -33,14 +82,14 @@ TestType MakeArithmeticCase(std::size_t size, double start, double step, std::st
 class AverageVectorSumFuncTests : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
  public:
   static std::string PrintTestParam(const TestType &test_param) {
-    return test_param.name;
+    return SanitizeToken(StripExtension(test_param.file_name)) + "_" + FormatAverageLabel(test_param.expected_average);
   }
 
  protected:
   void SetUp() override {
     const auto &params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
-    input_data_ = params.values;
-    expected_average_ = CalculateAverage(input_data_);
+    input_data_ = LoadVectorFromFile(params.file_name);
+    expected_average_ = params.expected_average;
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
@@ -53,24 +102,19 @@ class AverageVectorSumFuncTests : public ppc::util::BaseRunFuncTests<InType, Out
   }
 
  private:
-  static double CalculateAverage(const InType &values) {
-    if (values.empty()) {
-      return 0.0;
-    }
-    const double sum = std::accumulate(values.begin(), values.end(), 0.0);
-    return sum / static_cast<double>(values.size());
-  }
-
   InType input_data_;
   OutType expected_average_ = 0.0;
 };
 
 namespace {
 
-const std::array<TestType, 5> kTestCases = {
-    MakeCase({1.0, 2.0, 3.0, 4.0}, "small_positive"), MakeCase({-5.0, 0.0, 5.0, 10.0, -10.0}, "mixed_values"),
-    MakeCase({42.5}, "single_element"), MakeArithmeticCase(128, -32.0, 0.25, "arithmetic_progression"),
-    MakeArithmeticCase(1003, 1.0, 1.0, "long_progression")};
+const std::array<TestType, 5> kTestCases = {{
+    {"test_vec_small.txt", 5.5},
+    {"test_vec_mixed.txt", 2.0},
+    {"test_vec_single.txt", 42.5},
+    {"test_vec_progression.txt", 0.0},
+    {"test_vec_fraction.txt", 2.5},
+}};
 
 TEST_P(AverageVectorSumFuncTests, ComputesAverageCorrectly) {
   ExecuteTest(GetParam());
@@ -86,6 +130,79 @@ const auto kGtestValues = ppc::util::ExpandToValues(kTestTasksList);
 const auto kPerfTestName = AverageVectorSumFuncTests::PrintFuncTestName<AverageVectorSumFuncTests>;
 
 INSTANTIATE_TEST_SUITE_P(AverageCases, AverageVectorSumFuncTests, kGtestValues, kPerfTestName);
+
+class AverageVectorSumValidationTests : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
+ public:
+  static std::string PrintTestParam(const TestType &test_param) {
+    return SanitizeToken(StripExtension(test_param.file_name));
+  }
+
+ protected:
+  void SetUp() override {
+    const auto &params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
+    input_data_ = LoadVectorFromFile(params.file_name);
+  }
+
+  bool CheckTestOutputData(OutType & /*output_data*/) final {
+    return true;
+  }
+
+  InType GetTestInputData() final {
+    return input_data_;
+  }
+
+  void ExecuteTest(::ppc::util::FuncTestParam<InType, OutType, TestType> test_param) {
+    const std::string &test_name =
+        std::get<static_cast<std::size_t>(::ppc::util::GTestParamIndex::kNameTest)>(test_param);
+
+    ValidateTestName(test_name);
+
+    const auto test_env_scope = ppc::util::test::MakePerTestEnvForCurrentGTest(test_name);
+
+    if (IsTestDisabled(test_name)) {
+      GTEST_SKIP();
+    }
+
+    if (ShouldSkipNonMpiTask(test_name)) {
+      std::cerr << "kALL and kMPI tasks are not under mpirun\n";
+      GTEST_SKIP();
+    }
+
+    task_ =
+        std::get<static_cast<std::size_t>(::ppc::util::GTestParamIndex::kTaskGetter)>(test_param)(GetTestInputData());
+    ExecuteTaskPipeline();
+  }
+
+  void ExecuteTaskPipeline() {
+    EXPECT_FALSE(task_->Validation());
+    task_->PreProcessing();
+    task_->Run();
+    task_->PostProcessing();
+  }
+
+ private:
+  InType input_data_;
+  ppc::task::TaskPtr<InType, OutType> task_;
+};
+
+const std::array<TestType, 1> kValidationCases = {{
+    {"test_empty_vec.txt", 0.0},
+}};
+
+TEST_P(AverageVectorSumValidationTests, HandlesInvalidInput) {
+  ExecuteTest(GetParam());
+}
+
+const auto kValidationTasks = std::tuple_cat(ppc::util::AddFuncTask<GaivoronskiyMAverageVecSumMPI, InType>(
+                                                 kValidationCases, PPC_SETTINGS_gaivoronskiy_m_average_vector_sum),
+                                             ppc::util::AddFuncTask<GaivoronskiyMAverageVecSumSEQ, InType>(
+                                                 kValidationCases, PPC_SETTINGS_gaivoronskiy_m_average_vector_sum));
+
+const auto kValidationValues = ppc::util::ExpandToValues(kValidationTasks);
+
+const auto kValidationNames = AverageVectorSumValidationTests::PrintFuncTestName<AverageVectorSumValidationTests>;
+
+INSTANTIATE_TEST_SUITE_P(AverageValidationCases, AverageVectorSumValidationTests, kValidationValues, kValidationNames);
 
 }  // namespace
 
