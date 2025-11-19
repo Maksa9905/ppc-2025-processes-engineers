@@ -20,8 +20,8 @@
 
 namespace gaivoronskiy_m_average_vector_sum {
 
-// Provide printing support for Google Test
-inline void PrintTo(const TestCase &test_case, std::ostream *os) {
+// Provide printing support for Google Test (used implicitly via ADL)
+[[maybe_unused]] void PrintTo(const TestCase &test_case, std::ostream *os) {  // NOLINT
   *os << "TestCase{file_name=\"" << test_case.file_name << "\", expected_average=" << test_case.expected_average << "}";
 }
 
