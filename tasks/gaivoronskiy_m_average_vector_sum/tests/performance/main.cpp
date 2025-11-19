@@ -3,11 +3,13 @@
 #include <array>
 #include <charconv>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #include <numeric>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <vector>
 
 #include "gaivoronskiy_m_average_vector_sum/common/include/common.hpp"
@@ -54,15 +56,16 @@ class GaivoronskiyRunPerfTestProcesses : public ppc::util::BaseRunPerfTests<InTy
       if (remaining >= base_pattern.size()) {
         input_data_.insert(input_data_.end(), base_pattern.begin(), base_pattern.end());
       } else {
-        input_data_.insert(input_data_.end(), base_pattern.begin(), base_pattern.begin() + remaining);
+        input_data_.insert(input_data_.end(), base_pattern.begin(),
+                           base_pattern.begin() + static_cast<std::ptrdiff_t>(remaining));
       }
     }
     expected_average_ = CalculateAverage(input_data_);
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
-    const double kEps = 1e-9;
-    return std::fabs(output_data - expected_average_) <= kEps;
+    const double k_eps = 1e-9;
+    return std::fabs(output_data - expected_average_) <= k_eps;
   }
 
   InType GetTestInputData() final {
@@ -70,7 +73,7 @@ class GaivoronskiyRunPerfTestProcesses : public ppc::util::BaseRunPerfTests<InTy
   }
 
  private:
-  std::size_t ResolveInputSizeFromTestParam() {
+  std::size_t ResolveInputSizeFromTestParam() {  // NOLINT(readability-convert-member-functions-to-static)
     const auto &test_name = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kNameTest)>(GetParam());
     constexpr std::string_view kSizeTag = "_size";
     const auto pos = test_name.rfind(kSizeTag);

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstddef>
+#include <vector>
+
 #include "gaivoronskiy_m_average_vector_sum/common/include/common.hpp"
 #include "task/include/task.hpp"
 

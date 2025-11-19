@@ -3,8 +3,11 @@
 #include <mpi.h>
 
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <numeric>
+#include <utility>
+#include <vector>
 
 #include "gaivoronskiy_m_average_vector_sum/common/include/common.hpp"
 
@@ -32,7 +35,7 @@ bool GaivoronskiyMAverageVecSumMPI::PreProcessingImpl() {
     distributed_values_.clear();
   }
 
-  std::uint64_t size_to_share = static_cast<std::uint64_t>(total_size_);
+  auto size_to_share = static_cast<unsigned long long>(total_size_);
   MPI_Bcast(&size_to_share, 1, MPI_UNSIGNED_LONG_LONG, 0, MPI_COMM_WORLD);
   total_size_ = static_cast<std::size_t>(size_to_share);
 
@@ -53,7 +56,7 @@ bool GaivoronskiyMAverageVecSumMPI::RunImpl() {
   const std::size_t remainder = total_size_ % static_cast<std::size_t>(world_size_);
 
   for (int rank = 0; rank < world_size_; rank++) {
-    std::size_t chunk = base_chunk + (static_cast<std::size_t>(rank) < remainder ? 1 : 0);
+    std::size_t chunk = base_chunk + (std::cmp_less(rank, remainder) ? 1 : 0);
     send_counts[rank] = static_cast<int>(chunk);
     if (rank > 0) {
       displs[rank] = displs[rank - 1] + send_counts[rank - 1];
