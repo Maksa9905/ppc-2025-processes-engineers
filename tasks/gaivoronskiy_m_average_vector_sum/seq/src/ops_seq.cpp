@@ -29,9 +29,6 @@ bool GaivoronskiyMAverageVecSumSEQ::RunImpl() {
 }
 
 bool GaivoronskiyMAverageVecSumSEQ::PostProcessingImpl() {
-  if (data_.empty()) {
-    return false;
-  }
   GetOutput() = partial_sum_ / static_cast<double>(data_.size());
   return std::isfinite(GetOutput());
 }

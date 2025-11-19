@@ -42,7 +42,7 @@ bool GaivoronskiyMAverageVecSumMPI::PreProcessingImpl() {
 }
 
 bool GaivoronskiyMAverageVecSumMPI::RunImpl() {
-  if (world_size_ <= 0 || total_size_ == 0) {
+  if (total_size_ == 0) {
     return false;
   }
 
@@ -61,11 +61,10 @@ bool GaivoronskiyMAverageVecSumMPI::RunImpl() {
   }
 
   const int recv_count = send_counts[world_rank_];
-  const auto buffer_size = recv_count > 0 ? recv_count : 0;
-  local_buffer_.assign(static_cast<std::size_t>(buffer_size), 0.0);
+  local_buffer_.resize(recv_count > 0 ? static_cast<std::size_t>(recv_count) : 0);
 
-  const double *send_buffer = distributed_values_.empty() ? nullptr : distributed_values_.data();
-  double *recv_buffer = local_buffer_.empty() ? nullptr : local_buffer_.data();
+  const double *send_buffer = world_rank_ == 0 ? distributed_values_.data() : nullptr;
+  double *recv_buffer = !local_buffer_.empty() ? local_buffer_.data() : nullptr;
   MPI_Scatterv(send_buffer, send_counts.data(), displs.data(), MPI_DOUBLE, recv_buffer, recv_count, MPI_DOUBLE, 0,
                MPI_COMM_WORLD);
 
