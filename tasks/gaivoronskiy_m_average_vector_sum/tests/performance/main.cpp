@@ -18,6 +18,11 @@
 
 namespace gaivoronskiy_m_average_vector_sum {
 
+// Provide printing support for Google Test
+inline void PrintTo(const TestCase &test_case, std::ostream *os) {
+  *os << "TestCase{file_name=\"" << test_case.file_name << "\", expected_average=" << test_case.expected_average << "}";
+}
+
 namespace {
 
 constexpr std::array<std::size_t, 4> kPerfSizes = {1'000'000, 5'000'000, 20'000'000, 100'000'000};

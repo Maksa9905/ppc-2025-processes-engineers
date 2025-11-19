@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ostream>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -16,11 +15,6 @@ struct TestCase {
   std::string file_name;
   double expected_average;
 };
-
-// Provide printing support for Google Test
-inline void PrintTo(const TestCase &test_case, std::ostream *os) {
-  *os << "TestCase{file_name=\"" << test_case.file_name << "\", expected_average=" << test_case.expected_average << "}";
-}
 
 using TestType = TestCase;
 using BaseTask = ppc::task::Task<InType, OutType>;

@@ -20,6 +20,11 @@
 
 namespace gaivoronskiy_m_average_vector_sum {
 
+// Provide printing support for Google Test
+inline void PrintTo(const TestCase &test_case, std::ostream *os) {
+  *os << "TestCase{file_name=\"" << test_case.file_name << "\", expected_average=" << test_case.expected_average << "}";
+}
+
 namespace {
 
 std::vector<double> LoadVectorFromFile(const std::string &file_name) {
