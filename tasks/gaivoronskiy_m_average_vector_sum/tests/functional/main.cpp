@@ -38,8 +38,7 @@ class AverageVectorSumFuncTests : public ppc::util::BaseRunFuncTests<InType, Out
 
  protected:
   void SetUp() override {
-    const auto &params =
-        std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
+    const auto &params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
     input_data_ = params.values;
     expected_average_ = CalculateAverage(input_data_);
   }
@@ -68,11 +67,10 @@ class AverageVectorSumFuncTests : public ppc::util::BaseRunFuncTests<InType, Out
 
 namespace {
 
-const std::array<TestType, 5> kTestCases = {MakeCase({1.0, 2.0, 3.0, 4.0}, "small_positive"),
-                                            MakeCase({-5.0, 0.0, 5.0, 10.0, -10.0}, "mixed_values"),
-                                            MakeCase({42.5}, "single_element"),
-                                            MakeArithmeticCase(128, -32.0, 0.25, "arithmetic_progression"),
-                                            MakeArithmeticCase(1003, 1.0, 1.0, "long_progression")};
+const std::array<TestType, 5> kTestCases = {
+    MakeCase({1.0, 2.0, 3.0, 4.0}, "small_positive"), MakeCase({-5.0, 0.0, 5.0, 10.0, -10.0}, "mixed_values"),
+    MakeCase({42.5}, "single_element"), MakeArithmeticCase(128, -32.0, 0.25, "arithmetic_progression"),
+    MakeArithmeticCase(1003, 1.0, 1.0, "long_progression")};
 
 TEST_P(AverageVectorSumFuncTests, ComputesAverageCorrectly) {
   ExecuteTest(GetParam());
