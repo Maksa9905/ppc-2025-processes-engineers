@@ -20,11 +20,6 @@
 
 namespace gaivoronskiy_m_average_vector_sum {
 
-// Provide printing support for Google Test (used implicitly via ADL)
-[[maybe_unused]] void PrintTo(const TestCase &test_case, std::ostream *os) {  // NOLINT
-  *os << "TestCase{file_name=\"" << test_case.file_name << "\", expected_average=" << test_case.expected_average << "}";
-}
-
 namespace {
 
 std::vector<double> LoadVectorFromFile(const std::string &file_name) {
@@ -87,14 +82,14 @@ std::string FormatAverageLabel(double value) {
 class AverageVectorSumFuncTests : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
  public:
   static std::string PrintTestParam(const TestType &test_param) {
-    return SanitizeToken(StripExtension(test_param.file_name)) + "_" + FormatAverageLabel(test_param.expected_average);
+    return SanitizeToken(StripExtension(std::get<0>(test_param))) + "_" + FormatAverageLabel(std::get<1>(test_param));
   }
 
  protected:
   void SetUp() override {
     const auto &params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
-    input_data_ = LoadVectorFromFile(params.file_name);
-    expected_average_ = params.expected_average;
+    input_data_ = LoadVectorFromFile(std::get<0>(params));
+    expected_average_ = std::get<1>(params);
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
@@ -139,13 +134,13 @@ INSTANTIATE_TEST_SUITE_P(AverageCases, AverageVectorSumFuncTests, kGtestValues, 
 class AverageVectorSumValidationTests : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
  public:
   static std::string PrintTestParam(const TestType &test_param) {
-    return SanitizeToken(StripExtension(test_param.file_name));
+    return SanitizeToken(StripExtension(std::get<0>(test_param)));
   }
 
  protected:
   void SetUp() override {
     const auto &params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
-    input_data_ = LoadVectorFromFile(params.file_name);
+    input_data_ = LoadVectorFromFile(std::get<0>(params));
   }
 
   bool CheckTestOutputData(OutType & /*output_data*/) final {

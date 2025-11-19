@@ -10,13 +10,7 @@ namespace gaivoronskiy_m_average_vector_sum {
 
 using InType = std::vector<double>;
 using OutType = double;
-
-struct TestCase {
-  std::string file_name;
-  double expected_average;
-};
-
-using TestType = TestCase;
+using TestType = std::tuple<std::string, double>;
 using BaseTask = ppc::task::Task<InType, OutType>;
 
 }  // namespace gaivoronskiy_m_average_vector_sum
