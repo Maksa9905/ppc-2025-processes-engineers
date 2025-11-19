@@ -1,14 +1,9 @@
 #include <gtest/gtest.h>
-#include <stb/stb_image.h>
 
-#include <algorithm>
 #include <array>
-#include <cstddef>
-#include <cstdint>
+#include <cmath>
 #include <numeric>
-#include <stdexcept>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -16,43 +11,42 @@
 #include "gaivoronskiy_m_average_vector_sum/mpi/include/ops_mpi.hpp"
 #include "gaivoronskiy_m_average_vector_sum/seq/include/ops_seq.hpp"
 #include "util/include/func_test_util.hpp"
-#include "util/include/util.hpp"
 
 namespace gaivoronskiy_m_average_vector_sum {
 
-class GaivoronkiyMRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
+namespace {
+
+TestType MakeCase(std::vector<double> values, std::string name) {
+  return TestType{std::move(values), std::move(name)};
+}
+
+TestType MakeArithmeticCase(std::size_t size, double start, double step, std::string name) {
+  InType values(size);
+  for (std::size_t i = 0; i < size; ++i) {
+    values[i] = start + step * static_cast<double>(i);
+  }
+  return TestType{std::move(values), std::move(name)};
+}
+
+}  // namespace
+
+class AverageVectorSumFuncTests : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
  public:
   static std::string PrintTestParam(const TestType &test_param) {
-    return std::to_string(std::get<0>(test_param)) + "_" + std::get<1>(test_param);
+    return test_param.name;
   }
 
  protected:
   void SetUp() override {
-    int width = -1;
-    int height = -1;
-    int channels = -1;
-    std::vector<uint8_t> img;
-    // Read image in RGB to ensure consistent channel count
-    {
-      std::string abs_path = ppc::util::GetAbsoluteTaskPath(PPC_ID_gaivoronskiy_m_average_vector_sum, "pic.jpg");
-      auto *data = stbi_load(abs_path.c_str(), &width, &height, &channels, STBI_rgb);
-      if (data == nullptr) {
-        throw std::runtime_error("Failed to load image: " + std::string(stbi_failure_reason()));
-      }
-      channels = STBI_rgb;
-      img = std::vector<uint8_t>(data, data + (static_cast<ptrdiff_t>(width * height * channels)));
-      stbi_image_free(data);
-      if (std::cmp_not_equal(width, height)) {
-        throw std::runtime_error("width != height: ");
-      }
-    }
-
-    TestType params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
-    input_data_ = width - height + std::min(std::accumulate(img.begin(), img.end(), 0), channels);
+    const auto &params =
+        std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
+    input_data_ = params.values;
+    expected_average_ = CalculateAverage(input_data_);
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
-    return (input_data_ == output_data);
+    const double kEps = 1e-9;
+    return std::fabs(output_data - expected_average_) <= kEps;
   }
 
   InType GetTestInputData() final {
@@ -60,27 +54,40 @@ class GaivoronkiyMRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InT
   }
 
  private:
-  InType input_data_ = 0;
+  static double CalculateAverage(const InType &values) {
+    if (values.empty()) {
+      return 0.0;
+    }
+    const double sum = std::accumulate(values.begin(), values.end(), 0.0);
+    return sum / static_cast<double>(values.size());
+  }
+
+  InType input_data_;
+  OutType expected_average_ = 0.0;
 };
 
 namespace {
 
-TEST_P(GaivoronkiyMRunFuncTestsProcesses, MatmulFromPic) {
+const std::array<TestType, 5> kTestCases = {MakeCase({1.0, 2.0, 3.0, 4.0}, "small_positive"),
+                                            MakeCase({-5.0, 0.0, 5.0, 10.0, -10.0}, "mixed_values"),
+                                            MakeCase({42.5}, "single_element"),
+                                            MakeArithmeticCase(128, -32.0, 0.25, "arithmetic_progression"),
+                                            MakeArithmeticCase(1003, 1.0, 1.0, "long_progression")};
+
+TEST_P(AverageVectorSumFuncTests, ComputesAverageCorrectly) {
   ExecuteTest(GetParam());
 }
 
-const std::array<TestType, 3> kTestParam = {std::make_tuple(3, "3"), std::make_tuple(5, "5"), std::make_tuple(7, "7")};
-
 const auto kTestTasksList = std::tuple_cat(ppc::util::AddFuncTask<GaivoronskiyMAverageVecSumMPI, InType>(
-                                               kTestParam, PPC_SETTINGS_gaivoronskiy_m_average_vector_sum),
+                                               kTestCases, PPC_SETTINGS_gaivoronskiy_m_average_vector_sum),
                                            ppc::util::AddFuncTask<GaivoronskiyMAverageVecSumSEQ, InType>(
-                                               kTestParam, PPC_SETTINGS_gaivoronskiy_m_average_vector_sum));
+                                               kTestCases, PPC_SETTINGS_gaivoronskiy_m_average_vector_sum));
 
 const auto kGtestValues = ppc::util::ExpandToValues(kTestTasksList);
 
-const auto kPerfTestName = GaivoronkiyMRunFuncTestsProcesses::PrintFuncTestName<GaivoronkiyMRunFuncTestsProcesses>;
+const auto kPerfTestName = AverageVectorSumFuncTests::PrintFuncTestName<AverageVectorSumFuncTests>;
 
-INSTANTIATE_TEST_SUITE_P(PicMatrixTests, GaivoronkiyMRunFuncTestsProcesses, kGtestValues, kPerfTestName);
+INSTANTIATE_TEST_SUITE_P(AverageCases, AverageVectorSumFuncTests, kGtestValues, kPerfTestName);
 
 }  // namespace
 

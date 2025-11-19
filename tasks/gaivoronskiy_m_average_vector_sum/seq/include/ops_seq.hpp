@@ -17,6 +17,9 @@ class GaivoronskiyMAverageVecSumSEQ : public BaseTask {
   bool PreProcessingImpl() override;
   bool RunImpl() override;
   bool PostProcessingImpl() override;
+
+  InType data_;
+  double partial_sum_ = 0.0;
 };
 
 }  // namespace gaivoronskiy_m_average_vector_sum

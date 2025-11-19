@@ -17,6 +17,14 @@ class GaivoronskiyMAverageVecSumMPI : public BaseTask {
   bool PreProcessingImpl() override;
   bool RunImpl() override;
   bool PostProcessingImpl() override;
+
+  InType distributed_values_;
+  std::vector<double> local_buffer_;
+  std::size_t total_size_ = 0;
+  double local_sum_ = 0.0;
+  double global_sum_ = 0.0;
+  int world_rank_ = 0;
+  int world_size_ = 1;
 };
 
 }  // namespace gaivoronskiy_m_average_vector_sum

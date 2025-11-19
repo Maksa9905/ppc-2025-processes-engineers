@@ -2,71 +2,83 @@
 
 #include <mpi.h>
 
+#include <cmath>
+#include <cstdint>
 #include <numeric>
-#include <vector>
 
 #include "gaivoronskiy_m_average_vector_sum/common/include/common.hpp"
-#include "util/include/util.hpp"
 
 namespace gaivoronskiy_m_average_vector_sum {
 
 GaivoronskiyMAverageVecSumMPI::GaivoronskiyMAverageVecSumMPI(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetInput() = in;
-  GetOutput() = 0;
+  GetOutput() = 0.0;
 }
 
 bool GaivoronskiyMAverageVecSumMPI::ValidationImpl() {
-  return (GetInput() > 0) && (GetOutput() == 0);
+  return !GetInput().empty();
 }
 
 bool GaivoronskiyMAverageVecSumMPI::PreProcessingImpl() {
-  GetOutput() = 2 * GetInput();
-  return GetOutput() > 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &world_rank_);
+  MPI_Comm_size(MPI_COMM_WORLD, &world_size_);
+
+  total_size_ = 0;
+  if (world_rank_ == 0) {
+    distributed_values_ = GetInput();
+    total_size_ = distributed_values_.size();
+  } else {
+    distributed_values_.clear();
+  }
+
+  std::uint64_t size_to_share = static_cast<std::uint64_t>(total_size_);
+  MPI_Bcast(&size_to_share, 1, MPI_UNSIGNED_LONG_LONG, 0, MPI_COMM_WORLD);
+  total_size_ = static_cast<std::size_t>(size_to_share);
+
+  local_sum_ = 0.0;
+  global_sum_ = 0.0;
+  return total_size_ > 0;
 }
 
 bool GaivoronskiyMAverageVecSumMPI::RunImpl() {
-  auto input = GetInput();
-  if (input == 0) {
+  if (world_size_ <= 0 || total_size_ == 0) {
     return false;
   }
 
-  for (InType i = 0; i < GetInput(); i++) {
-    for (InType j = 0; j < GetInput(); j++) {
-      for (InType k = 0; k < GetInput(); k++) {
-        std::vector<InType> tmp(i + j + k, 1);
-        GetOutput() += std::accumulate(tmp.begin(), tmp.end(), 0);
-        GetOutput() -= i + j + k;
-      }
+  std::vector<int> send_counts(world_size_, 0);
+  std::vector<int> displs(world_size_, 0);
+
+  const std::size_t base_chunk = total_size_ / static_cast<std::size_t>(world_size_);
+  const std::size_t remainder = total_size_ % static_cast<std::size_t>(world_size_);
+
+  for (int rank = 0; rank < world_size_; rank++) {
+    std::size_t chunk = base_chunk + (static_cast<std::size_t>(rank) < remainder ? 1 : 0);
+    send_counts[rank] = static_cast<int>(chunk);
+    if (rank > 0) {
+      displs[rank] = displs[rank - 1] + send_counts[rank - 1];
     }
   }
 
-  const int num_threads = ppc::util::GetNumThreads();
-  GetOutput() *= num_threads;
+  const int recv_count = send_counts[world_rank_];
+  const auto buffer_size = recv_count > 0 ? recv_count : 0;
+  local_buffer_.assign(static_cast<std::size_t>(buffer_size), 0.0);
 
-  int rank = 0;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  const double *send_buffer = distributed_values_.empty() ? nullptr : distributed_values_.data();
+  double *recv_buffer = local_buffer_.empty() ? nullptr : local_buffer_.data();
+  MPI_Scatterv(send_buffer, send_counts.data(), displs.data(), MPI_DOUBLE, recv_buffer, recv_count, MPI_DOUBLE, 0,
+               MPI_COMM_WORLD);
 
-  if (rank == 0) {
-    GetOutput() /= num_threads;
-  } else {
-    int counter = 0;
-    for (int i = 0; i < num_threads; i++) {
-      counter++;
-    }
+  local_sum_ = std::accumulate(local_buffer_.begin(), local_buffer_.end(), 0.0);
 
-    if (counter != 0) {
-      GetOutput() /= counter;
-    }
-  }
+  MPI_Allreduce(&local_sum_, &global_sum_, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  return GetOutput() > 0;
+  GetOutput() = global_sum_ / static_cast<double>(total_size_);
+  return true;
 }
 
 bool GaivoronskiyMAverageVecSumMPI::PostProcessingImpl() {
-  GetOutput() -= GetInput();
-  return GetOutput() > 0;
+  return std::isfinite(GetOutput());
 }
 
 }  // namespace gaivoronskiy_m_average_vector_sum
