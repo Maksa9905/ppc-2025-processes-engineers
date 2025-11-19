@@ -5,11 +5,9 @@
 #include <cmath>
 #include <fstream>
 #include <iomanip>
-#include <numeric>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "gaivoronskiy_m_average_vector_sum/common/include/common.hpp"
@@ -46,7 +44,7 @@ std::string StripExtension(const std::string &file_name) {
 
 std::string SanitizeToken(std::string token) {
   for (char &ch : token) {
-    if (!std::isalnum(static_cast<unsigned char>(ch))) {
+    if (std::isalnum(static_cast<unsigned char>(ch)) == 0) {
       ch = '_';
     }
   }

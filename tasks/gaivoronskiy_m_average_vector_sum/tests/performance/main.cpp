@@ -10,6 +10,8 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 #include "gaivoronskiy_m_average_vector_sum/common/include/common.hpp"
@@ -118,7 +120,7 @@ auto MakePerfTaskTuplesForSize(std::size_t size, const std::string &settings_pat
 
 template <typename TaskType, std::size_t N, std::size_t... I>
 auto MakePerfTasksForAllSizesImpl(const std::array<std::size_t, N> &sizes, const std::string &settings_path,
-                                  std::index_sequence<I...>) {
+                                  std::index_sequence<I...> /*unused*/) {
   return std::tuple_cat(MakePerfTaskTuplesForSize<TaskType>(sizes[I], settings_path)...);
 }
 
