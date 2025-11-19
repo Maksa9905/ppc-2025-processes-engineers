@@ -18,6 +18,9 @@
 #include "gaivoronskiy_m_average_vector_sum/mpi/include/ops_mpi.hpp"
 #include "gaivoronskiy_m_average_vector_sum/seq/include/ops_seq.hpp"
 #include "util/include/perf_test_util.hpp"
+
+#include "performance/include/performance.hpp"
+#include "task/include/task.hpp"
 #include "util/include/util.hpp"
 
 namespace gaivoronskiy_m_average_vector_sum {

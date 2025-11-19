@@ -3,11 +3,12 @@
 #include <array>
 #include <cctype>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
-#include <iomanip>
-#include <sstream>
+#include <iostream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "gaivoronskiy_m_average_vector_sum/common/include/common.hpp"
@@ -51,36 +52,12 @@ std::string SanitizeToken(std::string token) {
   return token;
 }
 
-std::string FormatAverageLabel(double value) {
-  if (std::isnan(value)) {
-    return "nan";
-  }
-  std::ostringstream oss;
-  oss << std::fixed << std::setprecision(6) << value;
-  std::string str = oss.str();
-  if (str.find('.') != std::string::npos) {
-    str = str.substr(0, str.find_last_not_of('0') + 1);
-    if (!str.empty() && str.back() == '.') {
-      str.pop_back();
-    }
-  }
-  if (!str.empty() && str.front() == '-') {
-    str = "minus_" + str.substr(1);
-  }
-  for (char &ch : str) {
-    if (ch == '.') {
-      ch = 'p';
-    }
-  }
-  return str.empty() ? "0" : str;
-}
-
 }  // namespace
 
 class AverageVectorSumFuncTests : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
  public:
   static std::string PrintTestParam(const TestType &test_param) {
-    return SanitizeToken(StripExtension(std::get<0>(test_param))) + "_" + FormatAverageLabel(std::get<1>(test_param));
+    return SanitizeToken(StripExtension(std::get<0>(test_param)));
   }
 
  protected:
@@ -91,8 +68,8 @@ class AverageVectorSumFuncTests : public ppc::util::BaseRunFuncTests<InType, Out
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
-    const double kEps = 1e-9;
-    return std::fabs(output_data - expected_average_) <= kEps;
+    const double k_eps = 1e-9;
+    return std::fabs(output_data - expected_average_) <= k_eps;
   }
 
   InType GetTestInputData() final {
