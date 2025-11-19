@@ -18,7 +18,7 @@ struct TestCase {
 };
 
 // Provide printing support for Google Test
-inline void PrintTo(const TestCase& test_case, std::ostream* os) {
+inline void PrintTo(const TestCase &test_case, std::ostream *os) {
   *os << "TestCase{file_name=\"" << test_case.file_name << "\", expected_average=" << test_case.expected_average << "}";
 }
 
