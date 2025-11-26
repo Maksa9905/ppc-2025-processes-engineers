@@ -34,7 +34,7 @@ bool GaivoronskiyMAverageVecSumMPI::PreProcessingImpl() {
     distributed_values_.clear();
   }
 
-  auto size_to_share = static_cast<unsigned long>(total_size_);
+  int size_to_share = static_cast<MPI_INT>(total_size_);
   MPI_Bcast(&size_to_share, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
   total_size_ = static_cast<std::size_t>(size_to_share);
 
