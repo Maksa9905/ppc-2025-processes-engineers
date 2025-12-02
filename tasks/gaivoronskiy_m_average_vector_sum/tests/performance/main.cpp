@@ -48,7 +48,8 @@ std::vector<double> LoadVectorFromFile(const std::string &file_name) {
 class GaivoronskiyRunPerfTestProcesses : public ppc::util::BaseRunPerfTests<InType, OutType> {
  protected:
   void SetUp() override {
-    const std::size_t data_size = ResolveInputSizeFromTestParam();
+    const auto &test_name = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kNameTest)>(GetParam());
+    const std::size_t data_size = ResolveInputSizeFromTestParam(test_name);
     const auto base_pattern = LoadVectorFromFile(std::string(kPerfBaseFile));
     if (base_pattern.empty()) {
       throw std::runtime_error("Performance base vector file is empty");
@@ -77,8 +78,7 @@ class GaivoronskiyRunPerfTestProcesses : public ppc::util::BaseRunPerfTests<InTy
   }
 
  private:
-  std::size_t ResolveInputSizeFromTestParam() {
-    const auto &test_name = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kNameTest)>(GetParam());
+  static std::size_t ResolveInputSizeFromTestParam(const std::string &test_name) {
     constexpr std::string_view kSizeTag = "_size";
     const auto pos = test_name.rfind(kSizeTag);
     if (pos == std::string::npos) {
