@@ -77,7 +77,7 @@ class GaivoronskiyRunPerfTestProcesses : public ppc::util::BaseRunPerfTests<InTy
   }
 
  private:
-  std::size_t ResolveInputSizeFromTestParam() {  // NOLINT(readability-convert-member-functions-to-static)
+  std::size_t ResolveInputSizeFromTestParam() {
     const auto &test_name = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kNameTest)>(GetParam());
     constexpr std::string_view kSizeTag = "_size";
     const auto pos = test_name.rfind(kSizeTag);
