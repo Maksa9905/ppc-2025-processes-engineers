@@ -214,9 +214,16 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
     eliminateColumn(row, col);
 
     // Синхронизируем всю матрицу после изменений
-    // Все процессы выполняют одинаковые операции, но синхронизируем для надежности
-    for (int i = 0; i < n; i++) {
-      MPI_Bcast(matrix[i].data(), m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // Все процессы выполняют одинаковые операции, но из-за ошибок округления могут быть расхождения
+    // Синхронизируем от процесса 0 для обеспечения согласованности
+    if (rank == 0) {
+      for (int i = 0; i < n; i++) {
+        MPI_Bcast(matrix[i].data(), m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      }
+    } else {
+      for (int i = 0; i < n; i++) {
+        MPI_Bcast(matrix[i].data(), m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      }
     }
 
     row++;
@@ -272,11 +279,9 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
 
   // Собираем флаги со всех процессов
   bool inconsistent_global;
+  int rank_global;
   MPI_Reduce(&inconsistent_local, &inconsistent_global, 1, MPI_C_BOOL, MPI_LOR, 0, MPI_COMM_WORLD);
-
-  // Все процессы имеют одинаковую матрицу, поэтому rank одинаковый
-  // Используем значение от процесса 0
-  int rank_global = rank_local;
+  MPI_Reduce(&rank_local, &rank_global, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
   MPI_Bcast(&rank_global, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   // Определяем тип решения (все процессы имеют одинаковые данные)
