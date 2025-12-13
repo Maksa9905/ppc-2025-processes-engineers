@@ -150,8 +150,8 @@ bool GaivoronskiyMGaussJordanSEQ::RunImpl() {
     }
   }
 
-  // Если rank < m - 1, то бесконечно много решений
-  if (rank < m - 1) {
+  // Если rank < m - 1 и rank < n, то бесконечно много решений
+  if (rank < m - 1 && rank < n) {
     // Бесконечно много решений
     GetOutput() = std::vector<double>();
     return false;

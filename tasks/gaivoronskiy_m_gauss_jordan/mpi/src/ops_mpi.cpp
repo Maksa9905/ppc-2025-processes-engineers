@@ -213,16 +213,10 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
     // Обнуляем столбец во всех строках
     eliminateColumn(row, col);
 
-    // Синхронизируем всю матрицу после изменений (все процессы должны иметь одинаковые данные)
-    // Процесс 0 рассылает свою матрицу остальным
-    if (rank == 0) {
-      for (int i = 0; i < n; i++) {
-        MPI_Bcast(matrix[i].data(), m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      }
-    } else {
-      for (int i = 0; i < n; i++) {
-        MPI_Bcast(matrix[i].data(), m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      }
+    // Синхронизируем всю матрицу после изменений
+    // Все процессы выполняют одинаковые операции, но синхронизируем для надежности
+    for (int i = 0; i < n; i++) {
+      MPI_Bcast(matrix[i].data(), m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     }
 
     row++;
@@ -289,7 +283,7 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
   if (inconsistent_global) {
     GetOutput() = std::vector<double>();  // Нет решений
     return false;
-  } else if (rank_global < m - 1) {
+  } else if (rank_global < m - 1 && rank_global < n) {
     GetOutput() = std::vector<double>();  // Бесконечно много решений
     return false;
   } else {
