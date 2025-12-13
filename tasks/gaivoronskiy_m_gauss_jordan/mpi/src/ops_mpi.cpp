@@ -172,12 +172,7 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
     std::vector<double> pivot_row_data(m);
     getGlobalRow(pivot_row, pivot_row_data);
 
-    double pivot_value = pivot_row_data[pivot_col];
-
-    if (isZero(pivot_value)) {
-      return;
-    }
-
+    // После normalizeRow pivot_value должен быть 1
     // Все процессы обрабатывают все строки (у всех полная копия)
     for (int i = 0; i < n; i++) {
       if (i == pivot_row) {
@@ -188,7 +183,7 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
 
       if (!isZero(coeff)) {
         for (int j = 0; j < m; j++) {
-          matrix[i][j] -= coeff * pivot_row_data[j] / pivot_value;
+          matrix[i][j] -= coeff * pivot_row_data[j];
         }
       }
     }
@@ -218,6 +213,18 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
     // Обнуляем столбец во всех строках
     eliminateColumn(row, col);
 
+    // Синхронизируем всю матрицу после изменений (все процессы должны иметь одинаковые данные)
+    // Процесс 0 рассылает свою матрицу остальным
+    if (rank == 0) {
+      for (int i = 0; i < n; i++) {
+        MPI_Bcast(matrix[i].data(), m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      }
+    } else {
+      for (int i = 0; i < n; i++) {
+        MPI_Bcast(matrix[i].data(), m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      }
+    }
+
     row++;
     col++;
 
@@ -230,7 +237,7 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
 
   // Проверяем все строки
   bool inconsistent_local = false;
-  bool infinite_solutions_local = false;
+  int rank_local = 0;
 
   for (int i = 0; i < n; i++) {
     bool all_zero = true;
@@ -248,36 +255,57 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
       inconsistent_local = true;
     }
 
-    // Проверка на линейную зависимость
-    if (!has_non_zero && i < m - 1) {
-      infinite_solutions_local = true;
+    // Подсчитываем rank
+    if (has_non_zero) {
+      rank_local++;
     }
 
     // Извлекаем решение из диагональных элементов
     if (i < m - 1) {
+      bool found = false;
       for (int j = 0; j < m - 1; j++) {
         if (!isZero(matrix[i][j])) {
           solution[j] = matrix[i][m - 1];
+          found = true;
           break;
         }
+      }
+      if (!found) {
+        solution[i] = 0.0;  // Свободная переменная
       }
     }
   }
 
   // Собираем флаги со всех процессов
-  bool inconsistent_global, infinite_solutions_global;
+  bool inconsistent_global;
   MPI_Reduce(&inconsistent_local, &inconsistent_global, 1, MPI_C_BOOL, MPI_LOR, 0, MPI_COMM_WORLD);
-  MPI_Reduce(&infinite_solutions_local, &infinite_solutions_global, 1, MPI_C_BOOL, MPI_LOR, 0, MPI_COMM_WORLD);
+
+  // Все процессы имеют одинаковую матрицу, поэтому rank одинаковый
+  // Используем значение от процесса 0
+  int rank_global = rank_local;
+  MPI_Bcast(&rank_global, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   // Определяем тип решения (все процессы имеют одинаковые данные)
   if (inconsistent_global) {
     GetOutput() = std::vector<double>();  // Нет решений
     return false;
-  } else if (infinite_solutions_global) {
+  } else if (rank_global < m - 1) {
     GetOutput() = std::vector<double>();  // Бесконечно много решений
     return false;
   } else {
     GetOutput() = solution;  // Единственное решение
+  }
+
+  // Рассылаем решение всем процессам
+  int solution_size = static_cast<int>(GetOutput().size());
+  MPI_Bcast(&solution_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  if (rank != 0) {
+    GetOutput().resize(static_cast<size_t>(solution_size));
+  }
+
+  if (solution_size > 0) {
+    MPI_Bcast(GetOutput().data(), solution_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   }
 
   return !GetOutput().empty();

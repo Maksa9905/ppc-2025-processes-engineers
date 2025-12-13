@@ -150,19 +150,28 @@ bool GaivoronskiyMGaussJordanSEQ::RunImpl() {
     }
   }
 
-  if (rank < m - 1 && rank < n) {
+  // Если rank < m - 1, то бесконечно много решений
+  if (rank < m - 1) {
     // Бесконечно много решений
     GetOutput() = std::vector<double>();
     return false;
   }
 
   // Извлекаем единственное решение
+  // После метода Гаусса-Жордана каждая строка должна иметь единицу на диагонали
   for (int i = 0; i < std::min(n, m - 1); i++) {
+    bool found = false;
     for (int j = 0; j < m - 1; j++) {
       if (!isZero(matrix[i][j])) {
+        // Находим переменную, соответствующую этой строке
+        // После нормализации это должен быть единичный элемент
         solution[j] = matrix[i][m - 1];
+        found = true;
         break;
       }
+    }
+    if (!found && i < m - 1) {
+      solution[i] = 0.0;  // Свободная переменная
     }
   }
 
