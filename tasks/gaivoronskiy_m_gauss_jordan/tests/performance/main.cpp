@@ -47,8 +47,9 @@ TEST_P(GaivoronskiyMRunPerfTestsProcesses, RunPerfModes) {
   ExecuteTest(GetParam());
 }
 
-const auto kAllPerfTasks = ppc::util::MakeAllPerfTasks<InType, GaivoronskiyMGaussJordanMPI, GaivoronskiyMGaussJordanSEQ>(
-    PPC_SETTINGS_gaivoronskiy_m_gauss_jordan);
+const auto kAllPerfTasks =
+    ppc::util::MakeAllPerfTasks<InType, GaivoronskiyMGaussJordanMPI, GaivoronskiyMGaussJordanSEQ>(
+        PPC_SETTINGS_gaivoronskiy_m_gauss_jordan);
 
 const auto kGtestValues = ppc::util::TupleToGTestValues(kAllPerfTasks);
 

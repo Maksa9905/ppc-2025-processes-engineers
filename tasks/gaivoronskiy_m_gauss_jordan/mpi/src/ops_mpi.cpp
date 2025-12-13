@@ -112,14 +112,10 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
   auto isZero = [](double value) { return std::fabs(value) < 1e-10; };
 
   // Получить глобальную строку (все процессы имеют полную копию матрицы)
-  auto getGlobalRow = [&](int global_row, std::vector<double> &buffer) {
-    buffer = matrix[global_row];
-  };
+  auto getGlobalRow = [&](int global_row, std::vector<double> &buffer) { buffer = matrix[global_row]; };
 
   // Установить глобальную строку (все процессы выполняют одинаковые операции)
-  auto setGlobalRow = [&](int global_row, const std::vector<double> &row) {
-    matrix[global_row] = row;
-  };
+  auto setGlobalRow = [&](int global_row, const std::vector<double> &row) { matrix[global_row] = row; };
 
   // Найти опорный элемент в столбце
   auto findPivot = [&](int col, int start_row) -> int {
@@ -145,7 +141,9 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
 
   // Поменять строки местами
   auto swapRows = [&](int global_row1, int global_row2) {
-    if (global_row1 == global_row2) return;
+    if (global_row1 == global_row2) {
+      return;
+    }
 
     std::vector<double> row1(m), row2(m);
     getGlobalRow(global_row1, row1);
@@ -176,11 +174,15 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
 
     double pivot_value = pivot_row_data[pivot_col];
 
-    if (isZero(pivot_value)) return;
+    if (isZero(pivot_value)) {
+      return;
+    }
 
     // Все процессы обрабатывают все строки (у всех полная копия)
     for (int i = 0; i < n; i++) {
-      if (i == pivot_row) continue;
+      if (i == pivot_row) {
+        continue;
+      }
 
       double coeff = matrix[i][pivot_col];
 
@@ -265,8 +267,7 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
   // Собираем флаги со всех процессов
   bool inconsistent_global, infinite_solutions_global;
   MPI_Reduce(&inconsistent_local, &inconsistent_global, 1, MPI_C_BOOL, MPI_LOR, 0, MPI_COMM_WORLD);
-  MPI_Reduce(&infinite_solutions_local, &infinite_solutions_global, 1, MPI_C_BOOL, MPI_LOR, 0,
-             MPI_COMM_WORLD);
+  MPI_Reduce(&infinite_solutions_local, &infinite_solutions_global, 1, MPI_C_BOOL, MPI_LOR, 0, MPI_COMM_WORLD);
 
   // Определяем тип решения (все процессы имеют одинаковые данные)
   if (inconsistent_global) {

@@ -145,7 +145,9 @@ bool GaivoronskiyMGaussJordanSEQ::RunImpl() {
         break;
       }
     }
-    if (hasNonZero) rank++;
+    if (hasNonZero) {
+      rank++;
+    }
   }
 
   if (rank < m - 1 && rank < n) {
