@@ -2,8 +2,8 @@
 
 #include <mpi.h>
 
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <vector>
 
 #include "gaivoronskiy_m_gauss_jordan/common/include/common.hpp"
