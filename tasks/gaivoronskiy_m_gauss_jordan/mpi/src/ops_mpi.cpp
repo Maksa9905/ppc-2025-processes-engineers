@@ -2,7 +2,7 @@
 
 #include <mpi.h>
 
-#include <algorithm>
+#include <cstddef>
 #include <cmath>
 #include <vector>
 
@@ -33,18 +33,15 @@ bool GaivoronskiyMGaussJordanMPI::ValidationImpl() {
     int valid_int = valid ? 1 : 0;
     MPI_Bcast(&valid_int, 1, MPI_INT, 0, MPI_COMM_WORLD);
     return valid;
-  } else {
-    int valid_int = 0;
-    MPI_Bcast(&valid_int, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    return valid_int != 0;
   }
+  int valid_int = 0;
+  MPI_Bcast(&valid_int, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  return valid_int != 0;
 }
 
 bool GaivoronskiyMGaussJordanMPI::PreProcessingImpl() {
   int rank = 0;
-  int size = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   GetOutput().clear();
 
@@ -63,17 +60,19 @@ bool GaivoronskiyMGaussJordanMPI::PreProcessingImpl() {
     return true;
   }
 
+  std::vector<double> flat_matrix(static_cast<size_t>(n * m));
+
   if (rank == 0) {
-    std::vector<double> flat_matrix(static_cast<size_t>(n * m));
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < m; j++) {
         flat_matrix[static_cast<size_t>(i * m + j)] = GetInput()[i][j];
       }
     }
-    MPI_Bcast(flat_matrix.data(), n * m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  } else {
-    std::vector<double> flat_matrix(static_cast<size_t>(n * m));
-    MPI_Bcast(flat_matrix.data(), n * m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  }
+
+  MPI_Bcast(flat_matrix.data(), n * m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+  if (rank != 0) {
     GetInput() = InType(static_cast<size_t>(n), std::vector<double>(static_cast<size_t>(m)));
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < m; j++) {

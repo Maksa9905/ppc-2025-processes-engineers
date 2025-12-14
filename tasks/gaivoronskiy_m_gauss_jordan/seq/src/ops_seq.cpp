@@ -122,14 +122,14 @@ bool GaivoronskiyMGaussJordanSEQ::RunImpl() {
 
   int rank = 0;
   for (int i = 0; i < n; i++) {
-    bool hasNonZero = false;
+    bool has_non_zero = false;
     for (int j = 0; j < m - 1; j++) {
       if (!isZero(matrix[i][j])) {
-        hasNonZero = true;
+        has_non_zero = true;
         break;
       }
     }
-    if (hasNonZero) {
+    if (has_non_zero) {
       rank++;
     }
   }
