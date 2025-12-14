@@ -48,7 +48,6 @@ bool GaivoronskiyMGaussJordanMPI::PreProcessingImpl() {
 
   GetOutput().clear();
 
-  // Распределяем матрицу по процессам
   int n = 0;
   int m = 0;
 
@@ -64,7 +63,6 @@ bool GaivoronskiyMGaussJordanMPI::PreProcessingImpl() {
     return true;
   }
 
-  // Рассылаем матрицу всем процессам
   if (rank == 0) {
     std::vector<double> flat_matrix(static_cast<size_t>(n * m));
     for (int i = 0; i < n; i++) {
@@ -97,7 +95,6 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
     return true;
   }
 
-  // Копируем матрицу для работы
   std::vector<std::vector<double>> matrix = GetInput();
   int n = static_cast<int>(matrix.size());
   int m = (n > 0) ? static_cast<int>(matrix[0].size()) : 0;
@@ -106,20 +103,13 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
     return false;
   }
 
-  // Все процессы имеют полную копию матрицы (уже распределена в PreProcessingImpl)
-
-  // Проверка на нулевой элемент
   auto isZero = [](double value) { return std::fabs(value) < 1e-10; };
 
-  // Получить глобальную строку (все процессы имеют полную копию матрицы)
   auto getGlobalRow = [&](int global_row, std::vector<double> &buffer) { buffer = matrix[global_row]; };
 
-  // Установить глобальную строку (все процессы выполняют одинаковые операции)
   auto setGlobalRow = [&](int global_row, const std::vector<double> &row) { matrix[global_row] = row; };
 
-  // Найти опорный элемент в столбце
   auto findPivot = [&](int col, int start_row) -> int {
-    // Все процессы имеют полную копию матрицы, ищем локально
     int global_pivot_row = -1;
     double max_val = 0.0;
 
@@ -131,15 +121,13 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
       }
     }
 
-    // Все процессы находят одинаковый результат, так как имеют одинаковую матрицу
     if (max_val > 1e-10) {
       return global_pivot_row;
     }
 
-    return -1;  // Все элементы нулевые
+    return -1;
   };
 
-  // Поменять строки местами
   auto swapRows = [&](int global_row1, int global_row2) {
     if (global_row1 == global_row2) {
       return;
@@ -152,7 +140,6 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
     setGlobalRow(global_row2, row1);
   };
 
-  // Нормализовать строку
   auto normalizeRow = [&](int global_row, int pivot_col) {
     std::vector<double> row(m);
     getGlobalRow(global_row, row);
@@ -167,13 +154,10 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
     setGlobalRow(global_row, row);
   };
 
-  // Обнулить столбец в других строках
   auto eliminateColumn = [&](int pivot_row, int pivot_col) {
     std::vector<double> pivot_row_data(m);
     getGlobalRow(pivot_row, pivot_row_data);
 
-    // После normalizeRow pivot_value должен быть 1
-    // Все процессы обрабатывают все строки (у всех полная копия)
     for (int i = 0; i < n; i++) {
       if (i == pivot_row) {
         continue;
@@ -189,12 +173,10 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
     }
   };
 
-  // Основной цикл метода Гаусса-Жордана
   int row = 0;
   int col = 0;
 
   while (row < n && col < m - 1) {
-    // Находим опорный элемент
     int pivot_row = findPivot(col, row);
 
     if (pivot_row == -1) {
@@ -202,23 +184,16 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
       continue;
     }
 
-    // Переставляем строки
     if (pivot_row != row) {
       swapRows(row, pivot_row);
     }
 
-    // Нормализуем опорную строку
     normalizeRow(row, col);
 
-    // Синхронизируем опорную строку перед использованием в eliminateColumn
     MPI_Bcast(matrix[row].data(), m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    // Обнуляем столбец во всех строках
     eliminateColumn(row, col);
 
-    // Синхронизируем всю матрицу после изменений
-    // Все процессы выполняют одинаковые операции, но из-за ошибок округления могут быть расхождения
-    // Синхронизируем от процесса 0 для обеспечения согласованности
     for (int i = 0; i < n; i++) {
       MPI_Bcast(matrix[i].data(), m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     }
@@ -226,14 +201,11 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
     row++;
     col++;
 
-    // Синхронизация после каждой итерации
     MPI_Barrier(MPI_COMM_WORLD);
   }
 
-  // Собираем результаты (все процессы имеют полную матрицу)
   std::vector<double> solution(m - 1, 0.0);
 
-  // Проверяем все строки
   bool inconsistent_local = false;
   int rank_local = 0;
 
@@ -248,17 +220,14 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
       }
     }
 
-    // Проверка на противоречивость
     if (all_zero && !isZero(matrix[i][m - 1])) {
       inconsistent_local = true;
     }
 
-    // Подсчитываем rank
     if (has_non_zero) {
       rank_local++;
     }
 
-    // Извлекаем решение из диагональных элементов
     if (i < m - 1) {
       bool found = false;
       for (int j = 0; j < m - 1; j++) {
@@ -269,46 +238,40 @@ bool GaivoronskiyMGaussJordanMPI::RunImpl() {
         }
       }
       if (!found) {
-        solution[i] = 0.0;  // Свободная переменная
+        solution[i] = 0.0;
       }
     }
   }
 
-  // Собираем флаги со всех процессов
   bool inconsistent_global;
   int rank_global;
   MPI_Reduce(&inconsistent_local, &inconsistent_global, 1, MPI_C_BOOL, MPI_LOR, 0, MPI_COMM_WORLD);
   MPI_Reduce(&rank_local, &rank_global, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
   MPI_Bcast(&rank_global, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  // Определяем тип решения (все процессы имеют одинаковые данные)
-  // Процесс 0 определяет тип решения и рассылает его остальным
-  int solution_type = 0;  // 0 - нет решений, 1 - единственное решение, -1 - бесконечно много
+  int solution_type = 0;
   if (rank == 0) {
     if (inconsistent_global) {
-      solution_type = 0;  // Нет решений
+      solution_type = 0;
       GetOutput() = std::vector<double>();
     } else if (rank_global < m - 1 && rank_global < n) {
-      solution_type = -1;  // Бесконечно много решений
+      solution_type = -1;
       GetOutput() = std::vector<double>();
     } else {
-      solution_type = 1;  // Единственное решение
+      solution_type = 1;
       GetOutput() = solution;
     }
   }
 
-  // Рассылаем тип решения всем процессам
   MPI_Bcast(&solution_type, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   if (solution_type != 1) {
-    // Нет решений или бесконечно много решений
     if (rank != 0) {
       GetOutput() = std::vector<double>();
     }
     return false;
   }
 
-  // Рассылаем решение всем процессам
   int solution_size = static_cast<int>(GetOutput().size());
   MPI_Bcast(&solution_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 

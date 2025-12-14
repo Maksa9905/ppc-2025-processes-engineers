@@ -14,7 +14,6 @@ class GaivoronskiyMRunPerfTestsProcesses : public ppc::util::BaseRunPerfTests<In
   InType input_data_{};
 
   void SetUp() override {
-    // Создаем диагонально доминирующую матрицу для устойчивости
     int n = kMatrixSize_;
     int m = kMatrixSize_;
     input_data_ = InType(static_cast<size_t>(n), std::vector<double>(static_cast<size_t>(m + 1)));
@@ -29,7 +28,6 @@ class GaivoronskiyMRunPerfTestsProcesses : public ppc::util::BaseRunPerfTests<In
         }
         sum += std::abs(input_data_[i][j]);
       }
-      // Правая часть - сумма элементов строки
       input_data_[i][m] = sum;
     }
   }
