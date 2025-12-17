@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -11,6 +11,7 @@
 #include "gaivoronskiy_m_gauss_jordan/mpi/include/ops_mpi.hpp"
 #include "gaivoronskiy_m_gauss_jordan/seq/include/ops_seq.hpp"
 #include "util/include/func_test_util.hpp"
+#include "util/include/util.hpp"
 
 namespace gaivoronskiy_m_gauss_jordan {
 

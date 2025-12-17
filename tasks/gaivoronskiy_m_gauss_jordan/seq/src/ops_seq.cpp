@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <vector>
 
 #include "gaivoronskiy_m_gauss_jordan/common/include/common.hpp"
@@ -44,32 +45,32 @@ bool GaivoronskiyMGaussJordanSEQ::RunImpl() {
     return false;
   }
 
-  auto isZero = [](double value) { return std::fabs(value) < 1e-10; };
+  auto is_zero = [](double value) { return std::fabs(value) < 1e-10; };
 
-  auto findPivot = [&](int row, int col) -> int {
+  auto find_pivot = [&](int row, int col) -> int {
     for (int i = row; i < n; i++) {
-      if (!isZero(matrix[i][col])) {
+      if (!is_zero(matrix[i][col])) {
         return i;
       }
     }
     return -1;
   };
 
-  auto swapRows = [&](int row1, int row2) {
+  auto swap_rows = [&](int row1, int row2) {
     for (int j = 0; j < m; j++) {
       std::swap(matrix[row1][j], matrix[row2][j]);
     }
   };
 
-  auto divideRow = [&](int row, double divisor) {
+  auto divide_row = [&](int row, double divisor) {
     for (int j = 0; j < m; j++) {
       matrix[row][j] /= divisor;
     }
   };
 
-  auto subtractRows = [&](int targetRow, int sourceRow, double coefficient) {
+  auto subtract_rows = [&](int target_row, int source_row, double coefficient) {
     for (int j = 0; j < m; j++) {
-      matrix[targetRow][j] -= coefficient * matrix[sourceRow][j];
+      matrix[target_row][j] -= coefficient * matrix[source_row][j];
     }
   };
 
@@ -77,26 +78,26 @@ bool GaivoronskiyMGaussJordanSEQ::RunImpl() {
   int col = 0;
 
   while (row < n && col < m - 1) {
-    int pivotRow = findPivot(row, col);
+    int pivot_row = find_pivot(row, col);
 
-    if (pivotRow == -1) {
+    if (pivot_row == -1) {
       col++;
       continue;
     }
 
-    if (pivotRow != row) {
-      swapRows(row, pivotRow);
+    if (pivot_row != row) {
+      swap_rows(row, pivot_row);
     }
 
-    double pivotValue = matrix[row][col];
-    if (!isZero(pivotValue)) {
-      divideRow(row, pivotValue);
+    double pivot_value = matrix[row][col];
+    if (!is_zero(pivot_value)) {
+      divide_row(row, pivot_value);
     }
 
     for (int i = 0; i < n; i++) {
-      if (i != row && !isZero(matrix[i][col])) {
+      if (i != row && !is_zero(matrix[i][col])) {
         double coeff = matrix[i][col];
-        subtractRows(i, row, coeff);
+        subtract_rows(i, row, coeff);
       }
     }
 
@@ -107,14 +108,14 @@ bool GaivoronskiyMGaussJordanSEQ::RunImpl() {
   std::vector<double> solution(m - 1, 0.0);
 
   for (int i = 0; i < n; i++) {
-    bool allZero = true;
+    bool all_zero = true;
     for (int j = 0; j < m - 1; j++) {
-      if (!isZero(matrix[i][j])) {
-        allZero = false;
+      if (!is_zero(matrix[i][j])) {
+        all_zero = false;
         break;
       }
     }
-    if (allZero && !isZero(matrix[i][m - 1])) {
+    if (all_zero && !is_zero(matrix[i][m - 1])) {
       GetOutput() = std::vector<double>();
       return false;
     }
@@ -124,7 +125,7 @@ bool GaivoronskiyMGaussJordanSEQ::RunImpl() {
   for (int i = 0; i < n; i++) {
     bool has_non_zero = false;
     for (int j = 0; j < m - 1; j++) {
-      if (!isZero(matrix[i][j])) {
+      if (!is_zero(matrix[i][j])) {
         has_non_zero = true;
         break;
       }
@@ -142,7 +143,7 @@ bool GaivoronskiyMGaussJordanSEQ::RunImpl() {
   for (int i = 0; i < std::min(n, m - 1); i++) {
     bool found = false;
     for (int j = 0; j < m - 1; j++) {
-      if (!isZero(matrix[i][j])) {
+      if (!is_zero(matrix[i][j])) {
         solution[j] = matrix[i][m - 1];
         found = true;
         break;

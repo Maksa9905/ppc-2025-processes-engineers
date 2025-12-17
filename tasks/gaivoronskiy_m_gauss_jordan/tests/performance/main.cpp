@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
+#include <cstddef>
 #include <vector>
 
 #include "gaivoronskiy_m_gauss_jordan/common/include/common.hpp"
@@ -11,7 +13,7 @@ namespace gaivoronskiy_m_gauss_jordan {
 
 class GaivoronskiyMRunPerfTestsProcesses : public ppc::util::BaseRunPerfTests<InType, OutType> {
   const int kMatrixSize_ = 50;
-  InType input_data_{};
+  InType input_data_;
 
   void SetUp() override {
     int n = kMatrixSize_;
@@ -22,7 +24,7 @@ class GaivoronskiyMRunPerfTestsProcesses : public ppc::util::BaseRunPerfTests<In
       double sum = 0;
       for (int j = 0; j < m; j++) {
         if (i == j) {
-          input_data_[i][j] = 10.0 + (i % 100) / 10.0;
+          input_data_[i][j] = 10.0 + ((i % 100) / 10.0);
         } else {
           input_data_[i][j] = (i + j) % 10 / 10.0;
         }
