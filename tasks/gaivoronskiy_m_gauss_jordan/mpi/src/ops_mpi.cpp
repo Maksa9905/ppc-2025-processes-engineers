@@ -147,7 +147,7 @@ MatrixAnalysisResult AnalyzeMatrixAndExtractSolution(const std::vector<std::vect
   return result;
 }
 
-void BroadcastMatrixDimensions(int &n, int &m, int rank) {
+void BroadcastMatrixDimensions(int &n, int &m) {
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&m, 1, MPI_INT, 0, MPI_COMM_WORLD);
 }
@@ -219,7 +219,7 @@ bool GaivoronskiyMGaussJordanMPI::PreProcessingImpl() {
     m = (n > 0) ? static_cast<int>(GetInput()[0].size()) : 0;
   }
 
-  BroadcastMatrixDimensions(n, m, rank);
+  BroadcastMatrixDimensions(n, m);
 
   if (n == 0 || m == 0) {
     return true;
