@@ -82,9 +82,10 @@ const std::array<TestType, 17> kTestParam = {
                     std::vector<double>{1.0, 2.0}),
     // Пример 7: Большая система 4x4 (простая диагональная)
     // x = 1, y = 2, z = 3, w = 4
-    std::make_tuple("test_4x4",
-                    std::vector<std::vector<double>>{{1, 0, 0, 0, 1}, {0, 1, 0, 0, 2}, {0, 0, 1, 0, 3}, {0, 0, 0, 1, 4}},
-                    std::vector<double>{1.0, 2.0, 3.0, 4.0}),
+    std::make_tuple(
+        "test_4x4",
+        std::vector<std::vector<double>>{{1, 0, 0, 0, 1}, {0, 1, 0, 0, 2}, {0, 0, 1, 0, 3}, {0, 0, 0, 1, 4}},
+        std::vector<double>{1.0, 2.0, 3.0, 4.0}),
     // Пример 8: Простая система 2x2 с отрицательными коэффициентами
     // -x + y = 1, x + y = 3
     // Решение: x = 1, y = 2
@@ -116,14 +117,16 @@ const std::array<TestType, 17> kTestParam = {
     std::make_tuple("test_single_equation", std::vector<std::vector<double>>{{2, 6}}, std::vector<double>{3.0}),
     // Пример 14: Система 5x5
     // Решение: x1 = 1, x2 = 2, x3 = 3, x4 = 4, x5 = 5
-    std::make_tuple("test_5x5",
-                    std::vector<std::vector<double>>{
-                        {1, 0, 0, 0, 0, 1}, {0, 1, 0, 0, 0, 2}, {0, 0, 1, 0, 0, 3}, {0, 0, 0, 1, 0, 4}, {0, 0, 0, 0, 1, 5}},
-                    std::vector<double>{1.0, 2.0, 3.0, 4.0, 5.0}),
+    std::make_tuple(
+        "test_5x5",
+        std::vector<std::vector<double>>{
+            {1, 0, 0, 0, 0, 1}, {0, 1, 0, 0, 0, 2}, {0, 0, 1, 0, 0, 3}, {0, 0, 0, 1, 0, 4}, {0, 0, 0, 0, 1, 5}},
+        std::vector<double>{1.0, 2.0, 3.0, 4.0, 5.0}),
     // Пример 15: Система с маленькими коэффициентами
     // 0.001x + 0.002y = 0.005, 0.003x - 0.001y = 0.001
     // Решение: x = 1, y = 2
-    std::make_tuple("test_small_coeffs", std::vector<std::vector<double>>{{0.001, 0.002, 0.005}, {0.003, -0.001, 0.001}},
+    std::make_tuple("test_small_coeffs",
+                    std::vector<std::vector<double>>{{0.001, 0.002, 0.005}, {0.003, -0.001, 0.001}},
                     std::vector<double>{1.0, 2.0}),
     // Пример 16: Система с перестановкой (все нули в первом столбце кроме последней строки)
     // 0x + y + 0z = 2, 0x + 0y + z = 3, x + 0y + 0z = 1

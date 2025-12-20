@@ -120,7 +120,7 @@ class GaivoronskiyMRunPerfTestsDiagonal : public ppc::util::BaseRunPerfTests<InT
     input_data_ = InType(static_cast<size_t>(n), std::vector<double>(static_cast<size_t>(m + 1), 0.0));
 
     for (int i = 0; i < n; i++) {
-      input_data_[i][i] = 5.0 + i % 10;
+      input_data_[i][i] = 5.0 + (i % 10);
       input_data_[i][m] = input_data_[i][i] * (i + 1);
     }
   }
