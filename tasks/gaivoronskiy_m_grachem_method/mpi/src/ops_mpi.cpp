@@ -151,20 +151,45 @@ bool GaivoronskiyMGrahamScanMPI::RunImpl() {
     }
 
     hull_ = grahamScan(combined_points);
-    GetOutput() = hull_;
   }
+
+  int result_size = 0;
+  if (rank == 0) {
+    result_size = static_cast<int>(hull_.size());
+  }
+  MPI_Bcast(&result_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  if (rank != 0) {
+    hull_.resize(result_size);
+  }
+
+  std::vector<double> result_flat;
+  if (rank == 0) {
+    result_flat.resize(result_size * 2);
+    for (int i = 0; i < result_size; i++) {
+      result_flat[i * 2] = hull_[i].x;
+      result_flat[i * 2 + 1] = hull_[i].y;
+    }
+  } else {
+    result_flat.resize(result_size * 2);
+  }
+
+  MPI_Bcast(result_flat.data(), result_size * 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+  if (rank != 0) {
+    for (int i = 0; i < result_size; i++) {
+      hull_[i].x = result_flat[i * 2];
+      hull_[i].y = result_flat[i * 2 + 1];
+    }
+  }
+
+  GetOutput() = hull_;
 
   return true;
 }
 
 bool GaivoronskiyMGrahamScanMPI::PostProcessingImpl() {
-  int rank = 0;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-  if (rank == 0) {
-    return GetOutput().size() >= 3;
-  }
-  return true;
+  return GetOutput().size() >= 3;
 }
 
 std::vector<Point> GaivoronskiyMGrahamScanMPI::grahamScan(const std::vector<Point> &points) {

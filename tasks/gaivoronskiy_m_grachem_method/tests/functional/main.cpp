@@ -33,13 +33,20 @@ class GaivoronskiyMGrahamScanRunFuncTests : public ppc::util::BaseRunFuncTests<I
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
+    if (output_data.empty()) {
+      std::cout << "Error: Output is empty!" << std::endl;
+      return false;
+    }
+
     if (output_data.size() < 3) {
+      std::cout << "Error: Hull has less than 3 points: " << output_data.size() << std::endl;
       return false;
     }
 
     for (size_t i = 0; i < output_data.size(); i++) {
       for (size_t j = i + 1; j < output_data.size(); j++) {
         if (output_data[i] == output_data[j]) {
+          std::cout << "Error: Duplicate point at indices " << i << " and " << j << std::endl;
           return false;
         }
       }
