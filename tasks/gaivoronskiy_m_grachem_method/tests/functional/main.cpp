@@ -94,7 +94,6 @@ std::vector<Point> GetComplexPoints() {
 // Тест 6: Большой набор случайных точек в круге
 std::vector<Point> GetRandomPointsInCircle() {
   std::vector<Point> points;
-  const int n = 50;
   const double radius = 10.0;
 
   for (int i = 0; i < 10; i++) {
