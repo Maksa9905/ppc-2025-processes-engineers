@@ -107,7 +107,10 @@ bool GaivoronskiyMGrahamScanMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  std::vector<Point> local_hull = grahamScan(local_points_);
+  std::vector<Point> local_hull;
+  if (!local_points_.empty()) {
+    local_hull = grahamScan(local_points_);
+  }
 
   int local_hull_size = static_cast<int>(local_hull.size());
   std::vector<int> hull_sizes(size);
@@ -165,6 +168,9 @@ bool GaivoronskiyMGrahamScanMPI::PostProcessingImpl() {
 }
 
 std::vector<Point> GaivoronskiyMGrahamScanMPI::grahamScan(const std::vector<Point> &points) {
+  if (points.empty()) {
+    return std::vector<Point>();
+  }
   if (points.size() < 3) {
     return points;
   }
