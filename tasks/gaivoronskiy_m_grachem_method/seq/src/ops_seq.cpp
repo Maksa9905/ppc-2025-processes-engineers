@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <stack>
 #include <vector>
 
@@ -10,25 +11,23 @@
 namespace gaivoronskiy_m_grachem_method {
 
 namespace {
-int orientation(const Point &p, const Point &q, const Point &r) {
-  double val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
-  constexpr double eps = 1e-9;
-  if (std::abs(val) < eps) {
+int Orientation(const Point &p, const Point &q, const Point &r) {
+  double val = ((q.y - p.y) * (r.x - q.x)) - ((q.x - p.x) * (r.y - q.y));
+  constexpr double kEps = 1e-9;
+  if (std::abs(val) < kEps) {
     return 0;
   }
   return (val > 0) ? 1 : 2;
 }
 
-double distSquare(const Point &p1, const Point &p2) {
-  return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
+double DistSquare(const Point &p1, const Point &p2) {
+  return ((p1.x - p2.x) * (p1.x - p2.x)) + ((p1.y - p2.y) * (p1.y - p2.y));
 }
 
-Point p0;
-
-bool compare(const Point &p1, const Point &p2) {
-  int o = orientation(p0, p1, p2);
+bool Compare(const Point &p1, const Point &p2, const Point &p0) {
+  int o = Orientation(p0, p1, p2);
   if (o == 0) {
-    return distSquare(p0, p1) < distSquare(p0, p2);
+    return DistSquare(p0, p1) < DistSquare(p0, p2);
   }
   return (o == 2);
 }
@@ -64,13 +63,14 @@ bool GaivoronskiyMGrahamScanSEQ::RunImpl() {
   }
 
   std::swap(points_[0], points_[min_idx]);
-  p0 = points_[0];
+  const Point p0 = points_[0];
 
-  std::sort(points_.begin() + 1, points_.end(), compare);
+  std::sort(points_.begin() + 1, points_.end(),
+            [&p0](const Point &p1, const Point &p2) { return Compare(p1, p2, p0); });
 
   size_t m = 1;
   for (size_t i = 1; i < points_.size(); i++) {
-    while (i < points_.size() - 1 && orientation(p0, points_[i], points_[i + 1]) == 0) {
+    while (i < points_.size() - 1 && Orientation(p0, points_[i], points_[i + 1]) == 0) {
       i++;
     }
     points_[m] = points_[i];
@@ -89,7 +89,7 @@ bool GaivoronskiyMGrahamScanSEQ::RunImpl() {
   for (size_t i = 3; i < m; i++) {
     Point top = s.top();
     s.pop();
-    while (!s.empty() && orientation(s.top(), top, points_[i]) != 2) {
+    while (!s.empty() && Orientation(s.top(), top, points_[i]) != 2) {
       top = s.top();
       s.pop();
     }
@@ -103,7 +103,7 @@ bool GaivoronskiyMGrahamScanSEQ::RunImpl() {
     s.pop();
   }
 
-  std::reverse(hull_.begin(), hull_.end());
+  std::ranges::reverse(hull_);
   GetOutput() = hull_;
 
   return true;

@@ -13,7 +13,7 @@ struct Point {
   double y;
 
   Point() : x(0.0), y(0.0) {}
-  Point(double x_, double y_) : x(x_), y(y_) {}
+  Point(double xVal, double yVal) : x(xVal), y(yVal) {}
 
   bool operator==(const Point &other) const {
     return x == other.x && y == other.y;

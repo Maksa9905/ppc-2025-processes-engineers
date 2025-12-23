@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <stack>
 #include <vector>
 
@@ -12,25 +13,23 @@
 namespace gaivoronskiy_m_grachem_method {
 
 namespace {
-int orientation(const Point &p, const Point &q, const Point &r) {
-  double val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
-  constexpr double eps = 1e-9;
-  if (std::abs(val) < eps) {
+int Orientation(const Point &p, const Point &q, const Point &r) {
+  double val = ((q.y - p.y) * (r.x - q.x)) - ((q.x - p.x) * (r.y - q.y));
+  constexpr double kEps = 1e-9;
+  if (std::abs(val) < kEps) {
     return 0;
   }
   return (val > 0) ? 1 : 2;
 }
 
-double distSquare(const Point &p1, const Point &p2) {
-  return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
+double DistSquare(const Point &p1, const Point &p2) {
+  return ((p1.x - p2.x) * (p1.x - p2.x)) + ((p1.y - p2.y) * (p1.y - p2.y));
 }
 
-Point p0_local;
-
-bool compare(const Point &p1, const Point &p2) {
-  int o = orientation(p0_local, p1, p2);
+bool Compare(const Point &p1, const Point &p2, const Point &p0) {
+  int o = Orientation(p0, p1, p2);
   if (o == 0) {
-    return distSquare(p0_local, p1) < distSquare(p0_local, p2);
+    return DistSquare(p0, p1) < DistSquare(p0, p2);
   }
   return (o == 2);
 }
@@ -82,36 +81,44 @@ bool GaivoronskiyMGrahamScanMPI::PreProcessingImpl() {
 
   std::vector<double> flat_points;
   if (rank == 0) {
-    flat_points.resize(n_points * 2);
+    flat_points.resize(static_cast<size_t>(n_points) * 2);
     for (int i = 0; i < n_points; i++) {
-      flat_points[i * 2] = points_[i].x;
-      flat_points[i * 2 + 1] = points_[i].y;
+      flat_points[static_cast<size_t>(i) * 2] = points_[i].x;
+      flat_points[(static_cast<size_t>(i) * 2) + 1] = points_[i].y;
     }
   }
 
-  std::vector<double> local_flat(local_size * 2);
+  std::vector<double> local_flat(static_cast<size_t>(local_size) * 2);
   MPI_Scatterv(flat_points.data(), send_counts.data(), displs.data(), MPI_DOUBLE, local_flat.data(), send_counts[rank],
                MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   for (int i = 0; i < local_size; i++) {
-    local_points_[i].x = local_flat[i * 2];
-    local_points_[i].y = local_flat[i * 2 + 1];
+    local_points_[i].x = local_flat[static_cast<size_t>(i) * 2];
+    local_points_[i].y = local_flat[(static_cast<size_t>(i) * 2) + 1];
   }
 
   return true;
 }
 
-bool GaivoronskiyMGrahamScanMPI::RunImpl() {
-  int rank = 0;
-  int size = 0;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-  std::vector<Point> local_hull;
-  if (!local_points_.empty()) {
-    local_hull = grahamScan(local_points_);
+std::vector<double> GaivoronskiyMGrahamScanMPI::PointsToFlat(const std::vector<Point> &points) {
+  std::vector<double> flat_data(points.size() * 2);
+  for (size_t i = 0; i < points.size(); i++) {
+    flat_data[(i * 2)] = points[i].x;
+    flat_data[(i * 2) + 1] = points[i].y;
   }
+  return flat_data;
+}
 
+std::vector<Point> GaivoronskiyMGrahamScanMPI::FlatToPoints(const std::vector<double> &flat_data, int num_points) {
+  std::vector<Point> points(num_points);
+  for (int i = 0; i < num_points; i++) {
+    points[i].x = flat_data[static_cast<size_t>(i) * 2];
+    points[i].y = flat_data[(static_cast<size_t>(i) * 2) + 1];
+  }
+  return points;
+}
+
+void GaivoronskiyMGrahamScanMPI::GatherAndMergeHulls(const std::vector<Point> &local_hull, int rank, int size) {
   int local_hull_size = static_cast<int>(local_hull.size());
   std::vector<int> hull_sizes(size);
 
@@ -129,30 +136,23 @@ bool GaivoronskiyMGrahamScanMPI::RunImpl() {
     }
   }
 
-  std::vector<double> local_hull_flat(local_hull_size * 2);
-  for (int i = 0; i < local_hull_size; i++) {
-    local_hull_flat[i * 2] = local_hull[i].x;
-    local_hull_flat[i * 2 + 1] = local_hull[i].y;
-  }
+  std::vector<double> local_hull_flat = PointsToFlat(local_hull);
 
   std::vector<double> all_hulls_flat;
   if (rank == 0) {
-    all_hulls_flat.resize(total_hull_points * 2);
+    all_hulls_flat.resize(static_cast<size_t>(total_hull_points) * 2);
   }
 
   MPI_Gatherv(local_hull_flat.data(), local_hull_size * 2, MPI_DOUBLE, all_hulls_flat.data(), recv_counts.data(),
               displs.data(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
-    std::vector<Point> combined_points(total_hull_points);
-    for (int i = 0; i < total_hull_points; i++) {
-      combined_points[i].x = all_hulls_flat[i * 2];
-      combined_points[i].y = all_hulls_flat[i * 2 + 1];
-    }
-
-    hull_ = grahamScan(combined_points);
+    std::vector<Point> combined_points = FlatToPoints(all_hulls_flat, total_hull_points);
+    hull_ = GrahamScan(combined_points);
   }
+}
 
+void GaivoronskiyMGrahamScanMPI::BroadcastResult(int rank) {
   int result_size = 0;
   if (rank == 0) {
     result_size = static_cast<int>(hull_.size());
@@ -165,23 +165,31 @@ bool GaivoronskiyMGrahamScanMPI::RunImpl() {
 
   std::vector<double> result_flat;
   if (rank == 0) {
-    result_flat.resize(result_size * 2);
-    for (int i = 0; i < result_size; i++) {
-      result_flat[i * 2] = hull_[i].x;
-      result_flat[i * 2 + 1] = hull_[i].y;
-    }
+    result_flat = PointsToFlat(hull_);
   } else {
-    result_flat.resize(result_size * 2);
+    result_flat.resize(static_cast<size_t>(result_size) * 2);
   }
 
   MPI_Bcast(result_flat.data(), result_size * 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   if (rank != 0) {
-    for (int i = 0; i < result_size; i++) {
-      hull_[i].x = result_flat[i * 2];
-      hull_[i].y = result_flat[i * 2 + 1];
-    }
+    hull_ = FlatToPoints(result_flat, result_size);
   }
+}
+
+bool GaivoronskiyMGrahamScanMPI::RunImpl() {
+  int rank = 0;
+  int size = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  std::vector<Point> local_hull;
+  if (!local_points_.empty()) {
+    local_hull = GrahamScan(local_points_);
+  }
+
+  GatherAndMergeHulls(local_hull, rank, size);
+  BroadcastResult(rank);
 
   GetOutput() = hull_;
 
@@ -192,9 +200,9 @@ bool GaivoronskiyMGrahamScanMPI::PostProcessingImpl() {
   return GetOutput().size() >= 3;
 }
 
-std::vector<Point> GaivoronskiyMGrahamScanMPI::grahamScan(const std::vector<Point> &points) {
+std::vector<Point> GaivoronskiyMGrahamScanMPI::GrahamScan(const std::vector<Point> &points) {
   if (points.empty()) {
-    return std::vector<Point>();
+    return {};
   }
   if (points.size() < 3) {
     return points;
@@ -210,13 +218,14 @@ std::vector<Point> GaivoronskiyMGrahamScanMPI::grahamScan(const std::vector<Poin
   }
 
   std::swap(pts[0], pts[min_idx]);
-  p0_local = pts[0];
+  const Point p0_local = pts[0];
 
-  std::sort(pts.begin() + 1, pts.end(), compare);
+  std::sort(pts.begin() + 1, pts.end(),
+            [&p0_local](const Point &p1, const Point &p2) { return Compare(p1, p2, p0_local); });
 
   size_t m = 1;
   for (size_t i = 1; i < pts.size(); i++) {
-    while (i < pts.size() - 1 && orientation(p0_local, pts[i], pts[i + 1]) == 0) {
+    while (i < pts.size() - 1 && Orientation(p0_local, pts[i], pts[i + 1]) == 0) {
       i++;
     }
     pts[m] = pts[i];
@@ -235,7 +244,7 @@ std::vector<Point> GaivoronskiyMGrahamScanMPI::grahamScan(const std::vector<Poin
   for (size_t i = 3; i < m; i++) {
     Point top = s.top();
     s.pop();
-    while (!s.empty() && orientation(s.top(), top, pts[i]) != 2) {
+    while (!s.empty() && Orientation(s.top(), top, pts[i]) != 2) {
       top = s.top();
       s.pop();
     }
@@ -249,15 +258,15 @@ std::vector<Point> GaivoronskiyMGrahamScanMPI::grahamScan(const std::vector<Poin
     s.pop();
   }
 
-  std::reverse(result.begin(), result.end());
+  std::ranges::reverse(result);
   return result;
 }
 
-std::vector<Point> GaivoronskiyMGrahamScanMPI::mergeHulls(const std::vector<Point> &hull1,
+std::vector<Point> GaivoronskiyMGrahamScanMPI::MergeHulls(const std::vector<Point> &hull1,
                                                           const std::vector<Point> &hull2) {
   std::vector<Point> combined = hull1;
   combined.insert(combined.end(), hull2.begin(), hull2.end());
-  return grahamScan(combined);
+  return GrahamScan(combined);
 }
 
 }  // namespace gaivoronskiy_m_grachem_method

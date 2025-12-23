@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "gaivoronskiy_m_grachem_method/common/include/common.hpp"
 #include "task/include/task.hpp"
 

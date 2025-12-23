@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "gaivoronskiy_m_grachem_method/common/include/common.hpp"
 #include "task/include/task.hpp"
 
@@ -22,8 +24,12 @@ class GaivoronskiyMGrahamScanMPI : public BaseTask {
   std::vector<Point> local_points_;
   std::vector<Point> hull_;
 
-  static std::vector<Point> grahamScan(const std::vector<Point> &points);
-  static std::vector<Point> mergeHulls(const std::vector<Point> &hull1, const std::vector<Point> &hull2);
+  static std::vector<Point> GrahamScan(const std::vector<Point> &points);
+  static std::vector<Point> MergeHulls(const std::vector<Point> &hull1, const std::vector<Point> &hull2);
+  static std::vector<double> PointsToFlat(const std::vector<Point> &points);
+  static std::vector<Point> FlatToPoints(const std::vector<double> &flat_data, int num_points);
+  void GatherAndMergeHulls(const std::vector<Point> &local_hull, int rank, int size);
+  void BroadcastResult(int rank);
 };
 
 }  // namespace gaivoronskiy_m_grachem_method
