@@ -1,10 +1,8 @@
 #include <gtest/gtest.h>
 
-#define _USE_MATH_DEFINES
 #include <cmath>
 #include <cstddef>
 #include <random>
-#include <vector>
 
 #ifndef M_PI
 #  define M_PI 3.14159265358979323846
@@ -19,7 +17,7 @@ namespace gaivoronskiy_m_grachem_method {
 
 class GaivoronskiyMGrahamScanRunPerfTests : public ppc::util::BaseRunPerfTests<InType, OutType> {
   const int kNumPoints_ = 10000;
-  InType input_data_{};
+  InType input_data_;
 
   void SetUp() override {
     std::random_device rd;

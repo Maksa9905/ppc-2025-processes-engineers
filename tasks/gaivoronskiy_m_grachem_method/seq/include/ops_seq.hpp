@@ -22,6 +22,10 @@ class GaivoronskiyMGrahamScanSEQ : public BaseTask {
 
   std::vector<Point> points_;
   std::vector<Point> hull_;
+
+  static size_t FindLowestPoint(const std::vector<Point> &pts);
+  static size_t RemoveCollinearPoints(std::vector<Point> &pts, const Point &p0);
+  static std::vector<Point> BuildConvexHull(const std::vector<Point> &pts, size_t num_points);
 };
 
 }  // namespace gaivoronskiy_m_grachem_method

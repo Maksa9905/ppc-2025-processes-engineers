@@ -200,48 +200,35 @@ bool GaivoronskiyMGrahamScanMPI::PostProcessingImpl() {
   return GetOutput().size() >= 3;
 }
 
-std::vector<Point> GaivoronskiyMGrahamScanMPI::GrahamScan(const std::vector<Point> &points) {
-  if (points.empty()) {
-    return {};
-  }
-  if (points.size() < 3) {
-    return points;
-  }
-
-  std::vector<Point> pts = points;
-
+size_t GaivoronskiyMGrahamScanMPI::FindLowestPoint(const std::vector<Point> &pts) {
   size_t min_idx = 0;
   for (size_t i = 1; i < pts.size(); i++) {
     if (pts[i].y < pts[min_idx].y || (pts[i].y == pts[min_idx].y && pts[i].x < pts[min_idx].x)) {
       min_idx = i;
     }
   }
+  return min_idx;
+}
 
-  std::swap(pts[0], pts[min_idx]);
-  const Point p0_local = pts[0];
-
-  std::sort(pts.begin() + 1, pts.end(),
-            [&p0_local](const Point &p1, const Point &p2) { return Compare(p1, p2, p0_local); });
-
+size_t GaivoronskiyMGrahamScanMPI::RemoveCollinearPoints(std::vector<Point> &pts, const Point &p0) {
   size_t m = 1;
   for (size_t i = 1; i < pts.size(); i++) {
-    while (i < pts.size() - 1 && Orientation(p0_local, pts[i], pts[i + 1]) == 0) {
+    while (i < pts.size() - 1 && Orientation(p0, pts[i], pts[i + 1]) == 0) {
       i++;
     }
     pts[m] = pts[i];
     m++;
   }
+  return m;
+}
 
-  if (m < 3) {
-    return pts;
-  }
-
+std::vector<Point> GaivoronskiyMGrahamScanMPI::BuildConvexHull(const std::vector<Point> &pts, size_t num_points) {
   std::stack<Point> s;
   s.push(pts[0]);
   s.push(pts[1]);
   s.push(pts[2]);
 
-  for (size_t i = 3; i < m; i++) {
+  for (size_t i = 3; i < num_points; i++) {
     Point top = s.top();
     s.pop();
     while (!s.empty() && Orientation(s.top(), top, pts[i]) != 2) {
@@ -260,6 +247,32 @@ std::vector<Point> GaivoronskiyMGrahamScanMPI::GrahamScan(const std::vector<Poin
 
   std::ranges::reverse(result);
   return result;
+}
+
+std::vector<Point> GaivoronskiyMGrahamScanMPI::GrahamScan(const std::vector<Point> &points) {
+  if (points.empty()) {
+    return {};
+  }
+  if (points.size() < 3) {
+    return points;
+  }
+
+  std::vector<Point> pts = points;
+
+  size_t min_idx = FindLowestPoint(pts);
+  std::swap(pts[0], pts[min_idx]);
+  const Point p0_local = pts[0];
+
+  std::sort(pts.begin() + 1, pts.end(),
+            [&p0_local](const Point &p1, const Point &p2) { return Compare(p1, p2, p0_local); });
+
+  size_t m = RemoveCollinearPoints(pts, p0_local);
+
+  if (m < 3) {
+    return pts;
+  }
+
+  return BuildConvexHull(pts, m);
 }
 
 std::vector<Point> GaivoronskiyMGrahamScanMPI::MergeHulls(const std::vector<Point> &hull1,

@@ -49,61 +49,74 @@ bool GaivoronskiyMGrahamScanSEQ::PreProcessingImpl() {
   return !points_.empty();
 }
 
+size_t GaivoronskiyMGrahamScanSEQ::FindLowestPoint(const std::vector<Point> &pts) {
+  size_t min_idx = 0;
+  for (size_t i = 1; i < pts.size(); i++) {
+    if (pts[i].y < pts[min_idx].y || (pts[i].y == pts[min_idx].y && pts[i].x < pts[min_idx].x)) {
+      min_idx = i;
+    }
+  }
+  return min_idx;
+}
+
+size_t GaivoronskiyMGrahamScanSEQ::RemoveCollinearPoints(std::vector<Point> &pts, const Point &p0) {
+  size_t m = 1;
+  for (size_t i = 1; i < pts.size(); i++) {
+    while (i < pts.size() - 1 && Orientation(p0, pts[i], pts[i + 1]) == 0) {
+      i++;
+    }
+    pts[m] = pts[i];
+    m++;
+  }
+  return m;
+}
+
+std::vector<Point> GaivoronskiyMGrahamScanSEQ::BuildConvexHull(const std::vector<Point> &pts, size_t num_points) {
+  std::stack<Point> s;
+  s.push(pts[0]);
+  s.push(pts[1]);
+  s.push(pts[2]);
+
+  for (size_t i = 3; i < num_points; i++) {
+    Point top = s.top();
+    s.pop();
+    while (!s.empty() && Orientation(s.top(), top, pts[i]) != 2) {
+      top = s.top();
+      s.pop();
+    }
+    s.push(top);
+    s.push(pts[i]);
+  }
+
+  std::vector<Point> result;
+  while (!s.empty()) {
+    result.push_back(s.top());
+    s.pop();
+  }
+
+  std::ranges::reverse(result);
+  return result;
+}
+
 bool GaivoronskiyMGrahamScanSEQ::RunImpl() {
   if (points_.size() < 3) {
     return false;
   }
 
-  size_t min_idx = 0;
-  for (size_t i = 1; i < points_.size(); i++) {
-    if (points_[i].y < points_[min_idx].y ||
-        (points_[i].y == points_[min_idx].y && points_[i].x < points_[min_idx].x)) {
-      min_idx = i;
-    }
-  }
-
+  size_t min_idx = FindLowestPoint(points_);
   std::swap(points_[0], points_[min_idx]);
   const Point p0 = points_[0];
 
   std::sort(points_.begin() + 1, points_.end(),
             [&p0](const Point &p1, const Point &p2) { return Compare(p1, p2, p0); });
 
-  size_t m = 1;
-  for (size_t i = 1; i < points_.size(); i++) {
-    while (i < points_.size() - 1 && Orientation(p0, points_[i], points_[i + 1]) == 0) {
-      i++;
-    }
-    points_[m] = points_[i];
-    m++;
-  }
+  size_t m = RemoveCollinearPoints(points_, p0);
 
   if (m < 3) {
     return false;
   }
 
-  std::stack<Point> s;
-  s.push(points_[0]);
-  s.push(points_[1]);
-  s.push(points_[2]);
-
-  for (size_t i = 3; i < m; i++) {
-    Point top = s.top();
-    s.pop();
-    while (!s.empty() && Orientation(s.top(), top, points_[i]) != 2) {
-      top = s.top();
-      s.pop();
-    }
-    s.push(top);
-    s.push(points_[i]);
-  }
-
-  hull_.clear();
-  while (!s.empty()) {
-    hull_.push_back(s.top());
-    s.pop();
-  }
-
-  std::ranges::reverse(hull_);
+  hull_ = BuildConvexHull(points_, m);
   GetOutput() = hull_;
 
   return true;
