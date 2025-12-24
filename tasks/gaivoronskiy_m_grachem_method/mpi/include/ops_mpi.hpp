@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <vector>
 
 #include "gaivoronskiy_m_grachem_method/common/include/common.hpp"
